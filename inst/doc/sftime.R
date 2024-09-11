@@ -89,7 +89,7 @@ x5_stars <- stars::read_ncdf(system.file("nc/bcsd_obs_1999.nc", package = "stars
 # convert to sftime
 x5_sftime <- st_as_sftime(x5_stars, time_column_name = "time")
 
-## ---- error = TRUE------------------------------------------------------------
+## ----error = TRUE-------------------------------------------------------------
 # failed conversion to sftime
 x5_sftime <- st_as_sftime(x5_stars, merge = TRUE, time_column_name = "time")
 x5_sftime <- st_as_sftime(x5_stars, long = FALSE, time_column_name = "time")
@@ -110,6 +110,17 @@ x2_TracksCollection <- trajectories::rTracksCollection(p = 2, m = 3, n = 40)
 x2_TracksCollection_sftime <- st_as_sftime(x2_TracksCollection)
 x2_Tracks_sftime <- st_as_sftime(x2_TracksCollection@tracksCollection[[1]])
 x2_Track_sftime <- st_as_sftime(x2_TracksCollection@tracksCollection[[1]]@tracks[[1]])
+
+## ----eval=TRUE, echo=TRUE-----------------------------------------------------
+# get a sample cubble_df object
+climate_aus <- cubble::climate_aus
+
+# convert to sftime
+climate_aus_sftime <- 
+  st_as_sftime(climate_aus[1:4, ])
+
+climate_aus_sftime <- 
+  st_as_sftime(cubble::face_temporal(climate_aus)[1:4, ])
 
 ## -----------------------------------------------------------------------------
 st_time(x_sftime1)
@@ -175,7 +186,7 @@ x_sftime4 %>%
   geom_path(aes(y = value, x = time, color = id_object)) +
   facet_wrap(~ variable, scales = "free_y")
 
-## ---- eval=TRUE---------------------------------------------------------------
+## ----eval=TRUE----------------------------------------------------------------
 (tc <- as.POSIXct("2020-09-01 08:00:00")-0:3*3600*24)
 
 ## -----------------------------------------------------------------------------

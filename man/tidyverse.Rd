@@ -31,6 +31,7 @@
 \alias{separate.sftime}
 \alias{unite.sftime}
 \alias{separate_rows.sftime}
+\alias{drop_na.sftime}
 \title{'tidyverse' methods for \code{sftime} objects}
 \usage{
 inner_join.sftime(x, y, by = NULL, copy = FALSE, suffix = c(".x", ".y"), ...)
@@ -71,7 +72,7 @@ summarize.sftime(.data, ..., .dots, do_union = TRUE, is_coverage = FALSE)
 
 distinct.sftime(.data, ..., .keep_all = FALSE)
 
-\method{gather}{sftime}(
+gather.sftime(
   data,
   key,
   value,
@@ -81,7 +82,7 @@ distinct.sftime(.data, ..., .keep_all = FALSE)
   factor_key = FALSE
 )
 
-\method{pivot_longer}{sftime}(
+pivot_longer.sftime(
   data,
   cols,
   names_to = "name",
@@ -98,7 +99,15 @@ distinct.sftime(.data, ..., .keep_all = FALSE)
   ...
 )
 
-\method{spread}{sftime}(data, key, value, fill = NA, convert = FALSE, drop = TRUE, sep = NULL)
+spread.sftime(
+  data,
+  key,
+  value,
+  fill = NA,
+  convert = FALSE,
+  drop = TRUE,
+  sep = NULL
+)
 
 sample_n.sftime(
   tbl,
@@ -116,11 +125,11 @@ sample_frac.sftime(
   .env = parent.frame()
 )
 
-\method{nest}{sftime}(.data, ...)
+nest.sftime(.data, ...)
 
-\method{unnest}{sftime}(data, ..., .preserve = NULL)
+unnest.sftime(data, ..., .preserve = NULL)
 
-\method{separate}{sftime}(
+separate.sftime(
   data,
   col,
   into,
@@ -132,34 +141,45 @@ sample_frac.sftime(
   ...
 )
 
-\method{unite}{sftime}(data, col, ..., sep = "_", remove = TRUE)
+unite.sftime(data, col, ..., sep = "_", remove = TRUE)
 
-\method{separate_rows}{sftime}(data, ..., sep = "[^[:alnum:]]+", convert = FALSE)
+separate_rows.sftime(data, ..., sep = "[^[:alnum:]]+", convert = FALSE)
+
+drop_na.sftime(data, ...)
 }
 \arguments{
 \item{x}{An object of class \code{sftime}.}
 
-\item{y}{A pair of data frames, data frame extensions (e.g. a tibble), or
-lazy data frames (e.g. from dbplyr or dtplyr). See \emph{Methods}, below, for
-more details.}
+\item{y}{See \code{dplyr::`mutate-joins`}.}
 
-\item{by}{A character vector of variables to join by.
+\item{by}{A join specification created with \code{\link[dplyr:join_by]{join_by()}}, or a character
+vector of variables to join by.
 
 If \code{NULL}, the default, \verb{*_join()} will perform a natural join, using all
-variables in common across \code{x} and \code{y}. A message lists the variables so that you
-can check they're correct; suppress the message by supplying \code{by} explicitly.
+variables in common across \code{x} and \code{y}. A message lists the variables so
+that you can check they're correct; suppress the message by supplying \code{by}
+explicitly.
 
-To join by different variables on \code{x} and \code{y}, use a named vector.
-For example, \code{by = c("a" = "b")} will match \code{x$a} to \code{y$b}.
+To join on different variables between \code{x} and \code{y}, use a \code{\link[dplyr:join_by]{join_by()}}
+specification. For example, \code{join_by(a == b)} will match \code{x$a} to \code{y$b}.
 
-To join by multiple variables, use a vector with length > 1.
-For example, \code{by = c("a", "b")} will match \code{x$a} to \code{y$a} and \code{x$b} to
-\code{y$b}. Use a named vector to match different variables in \code{x} and \code{y}.
-For example, \code{by = c("a" = "b", "c" = "d")} will match \code{x$a} to \code{y$b} and
-\code{x$c} to \code{y$d}.
+To join by multiple variables, use a \code{\link[dplyr:join_by]{join_by()}} specification with
+multiple expressions. For example, \code{join_by(a == b, c == d)} will match
+\code{x$a} to \code{y$b} and \code{x$c} to \code{y$d}. If the column names are the same between
+\code{x} and \code{y}, you can shorten this by listing only the variable names, like
+\code{join_by(a, c)}.
 
-To perform a cross-join, generating all combinations of \code{x} and \code{y},
-use \code{by = character()}.}
+\code{\link[dplyr:join_by]{join_by()}} can also be used to perform inequality, rolling, and overlap
+joins. See the documentation at \link[dplyr:join_by]{?join_by} for details on
+these types of joins.
+
+For simple equality joins, you can alternatively specify a character vector
+of variable names to join by. For example, \code{by = c("a", "b")} joins \code{x$a}
+to \code{y$a} and \code{x$b} to \code{y$b}. If variable names differ between \code{x} and \code{y},
+use a named character vector like \code{by = c("x_a" = "y_a", "x_b" = "y_b")}.
+
+To perform a cross-join, generating all combinations of \code{x} and \code{y}, see
+\code{\link[dplyr:cross_join]{cross_join()}}.}
 
 \item{copy}{If \code{x} and \code{y} are not from the same data source,
 and \code{copy} is \code{TRUE}, then \code{y} will be copied into the
@@ -196,98 +216,29 @@ Should be a character vector of length 2.}
 
 \item{factor_key}{see original function docs}
 
-\item{cols}{<\code{\link[tidyr:tidyr_tidy_select]{tidy-select}}> Columns to pivot into
-longer format.}
+\item{cols}{see original function docs}
 
-\item{names_to}{A string specifying the name of the column to create
-from the data stored in the column names of \code{data}.
+\item{names_to}{see original function docs}
 
-Can be a character vector, creating multiple columns, if \code{names_sep}
-or \code{names_pattern} is provided. In this case, there are two special
-values you can take advantage of:
-\itemize{
-\item \code{NA} will discard that component of the name.
-\item \code{.value} indicates that component of the name defines the name of the
-column containing the cell values, overriding \code{values_to}.
-}}
+\item{names_prefix}{see original function docs}
 
-\item{names_prefix}{A regular expression used to remove matching text
-from the start of each variable name.}
+\item{names_sep}{see original function docs}
 
-\item{names_sep}{If \code{names_to} contains multiple values,
-these arguments control how the column name is broken up.
+\item{names_pattern}{see original function docs}
 
-\code{names_sep} takes the same specification as \code{\link[tidyr:separate]{separate()}}, and can either
-be a numeric vector (specifying positions to break on), or a single string
-(specifying a regular expression to split on).
+\item{names_ptypes}{see original function docs}
 
-\code{names_pattern} takes the same specification as \code{\link[tidyr:extract]{extract()}}, a regular
-expression containing matching groups (\verb{()}).
+\item{names_transform}{see original function docs}
 
-If these arguments do not give you enough control, use
-\code{pivot_longer_spec()} to create a spec object and process manually as
-needed.}
+\item{names_repair}{see original function docs}
 
-\item{names_pattern}{If \code{names_to} contains multiple values,
-these arguments control how the column name is broken up.
+\item{values_to}{see original function docs}
 
-\code{names_sep} takes the same specification as \code{\link[tidyr:separate]{separate()}}, and can either
-be a numeric vector (specifying positions to break on), or a single string
-(specifying a regular expression to split on).
+\item{values_drop_na}{see original function docs}
 
-\code{names_pattern} takes the same specification as \code{\link[tidyr:extract]{extract()}}, a regular
-expression containing matching groups (\verb{()}).
+\item{values_ptypes}{see original function docs}
 
-If these arguments do not give you enough control, use
-\code{pivot_longer_spec()} to create a spec object and process manually as
-needed.}
-
-\item{names_ptypes}{A list of column name-prototype pairs.
-A prototype (or ptype for short) is a zero-length vector (like \code{integer()}
-or \code{numeric()}) that defines the type, class, and attributes of a vector.
-Use these arguments to confirm that the created columns are the types that
-you expect.
-
-If not specified, the type of the columns generated from \code{names_to} will
-be character, and the type of the variables generated from \code{values_to}
-will be the common type of the input columns used to generate them.}
-
-\item{names_transform}{A list of column name-function pairs.
-Use these arguments if you need to change the type of specific columns.
-For example, \code{names_transform = list(week = as.integer)} would convert
-a character week variable to an integer.}
-
-\item{names_repair}{What happens if the output has invalid column names?
-The default, \code{"check_unique"} is to error if the columns are duplicated.
-Use \code{"minimal"} to allow duplicates in the output, or \code{"unique"} to
-de-duplicated by adding numeric suffixes. See \code{\link[vctrs:vec_as_names]{vctrs::vec_as_names()}}
-for more options.}
-
-\item{values_to}{A string specifying the name of the column to create
-from the data stored in cell values. If \code{names_to} is a character
-containing the special \code{.value} sentinel, this value will be ignored,
-and the name of the value column will be derived from part of the
-existing column names.}
-
-\item{values_drop_na}{If \code{TRUE}, will drop rows that contain only \code{NA}s
-in the \code{value_to} column. This effectively converts explicit missing values
-to implicit missing values, and should generally be used only when missing
-values in \code{data} were created by its structure.}
-
-\item{values_ptypes}{A list of column name-prototype pairs.
-A prototype (or ptype for short) is a zero-length vector (like \code{integer()}
-or \code{numeric()}) that defines the type, class, and attributes of a vector.
-Use these arguments to confirm that the created columns are the types that
-you expect.
-
-If not specified, the type of the columns generated from \code{names_to} will
-be character, and the type of the variables generated from \code{values_to}
-will be the common type of the input columns used to generate them.}
-
-\item{values_transform}{A list of column name-function pairs.
-Use these arguments if you need to change the type of specific columns.
-For example, \code{names_transform = list(week = as.integer)} would convert
-a character week variable to an integer.}
+\item{values_transform}{see original function docs}
 
 \item{fill}{see original function docs}
 
@@ -486,4 +437,16 @@ x1 \%>\%
   mutate(z = c("1", "2,3,4", "5,6")) \%>\%
   separate_rows(z, convert = TRUE)
 
+## drop_na
+x1 \%>\%
+  mutate(z = c(1, 2, NA)) \%>\%
+  drop_na(z)
+  
+x1 \%>\%
+  mutate(z = c(1, NA, NA)) \%>\%
+  drop_na(z)   
+
+x1 \%>\%
+  mutate(time = replace(time, 1, NA)) \%>\%
+  drop_na(time)
 }

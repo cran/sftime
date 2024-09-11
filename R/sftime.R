@@ -265,7 +265,8 @@ reclass_sftime <- function(x, time_column_name) {
 }
 
 #' @name st_sftime
-#' @param value An object to insert into \code{x}.
+#' @param value An object to insert into \code{x} or with which to rename 
+#' columns of \code{x}.
 #' @examples
 #' ## Assigning values to columns
 #' 
@@ -298,6 +299,18 @@ reclass_sftime <- function(x, time_column_name) {
   structure(NextMethod(), class = c("sftime", setdiff(class(x), "sftime")))
 }
 
+
+##' name st_sftime
+##' examples
+##' # renaming column names
+##' names(x)[1] <- "b"
+##' 
+##' export
+#"names<-.sftime" <- function(x, value) {
+#  out <- NextMethod()
+#  dplyr_reconstruct.sftime(out, x)
+#} # ---todo: raises an error
+
 #### printing ####
 
 #' Helper function to print time columns when printing an \code{sftime} object
@@ -315,7 +328,7 @@ print_time_column <- function(x, n = 5L, print_number_features = FALSE) {
   stopifnot(is.logical(print_number_features) && length(print_number_features) == 1)
   stopifnot(is.integer(n) && length(n) == 1)
   
-  ord <- order(x)
+  ord <- order(x, na.last = NA)
   if(length(x) != 0) {
     x_min <- x[[ord[[1]]]]
     x_max <- x[[ord[[length(ord)]]]]
@@ -329,8 +342,8 @@ print_time_column <- function(x, n = 5L, print_number_features = FALSE) {
   cat(paste0("Time column with ", 
              ifelse(!print_number_features, "",
                     paste0(length(x), ifelse(x_is_value, " feature of ", " features, each of "))),
-             ifelse(length(x_class) == 2, "class", "classes"), ": \'", 
-             paste0(x_class[-1], collapse="\', \'"), "\'.\n",
+             ifelse(length(x_class) == 1, "class", "classes"), ": \'", 
+             paste0(x_class, collapse="\', \'"), "\'.\n",
              ifelse(x_is_value, 
                     paste0("Representing ", x_min, ".\n" ), 
                     paste0("Ranging from ", x_min, " to ", x_max, ".\n" ))))
@@ -562,12 +575,12 @@ st_as_sftime.stars <- function(x, ..., long = TRUE, time_column_name = NULL) {
 }
 
 #' @name st_as_sftime
-#' @param agr A character vector; see the details section of \code{\link{st_sf}}.
+#' @param agr A character vector; see the details section of \code{\link[sf]{st_sf}}.
 #' @param coords In case of point data: names or numbers of the numeric columns 
 #' holding coordinates.
 #' @param wkt The name or number of the character column that holds WKT encoded 
 #' geometries.
-#' @param dim Passed on to \code{\link{st_point}} (only when argument 
+#' @param dim Passed on to \code{\link[sf]{st_point}} (only when argument 
 #' \code{coords} is given).
 #' @param remove A logical value; when \code{coords} or \code{wkt} is given, 
 #' remove these columns from \code{x}?
@@ -611,6 +624,187 @@ st_as_sftime.data.frame <-
     )
   }
 
+#' @name st_as_sftime
+#' @examples
+#' # convert a ppp object to an sftime object (modified from the sf package)
+#' if (require(spatstat.geom)) {
+#'   st_as_sftime(gorillas, time_column_name = "date")
+#' }
+#' 
+#' @export
+st_as_sftime.ppp <- function(x, ..., time_column_name) {
+  st_sftime(sf::st_as_sf(x), time_column_name = time_column_name)
+}
+
+#' @name st_as_sftime
+#' @examples
+#' # convert a psp object to an sftime object (modified from the spatstat.geom 
+#' # package)
+#' if (require(spatstat.geom)) {
+#'   # modified from spatstat.geom:
+#'   x_psp <- 
+#'     psp(
+#'       runif(10), runif(10), runif(10), runif(10), window=owin(), 
+#'       marks = data.frame(time = Sys.time() + 1:10)
+#'     )
+#'   st_as_sftime(x_psp, time_column_name = "time")
+#' }
+#' 
+#' @export
+st_as_sftime.psp <- function(x, ..., time_column_name) {
+  st_sftime(sf::st_as_sf(x), time_column_name = time_column_name)
+}
+
+#' @name st_as_sftime
+#' @examples
+#' # convert an lpp object to an sftime object (modified from the 
+#' # spatstat.linnet package)
+#' if (require(spatstat.geom) && require(spatstat.linnet)) {
+#'   # modified from spatstat.linnet:
+#'   
+#'   # letter 'A' 
+#'   v <- spatstat.geom::ppp(x=(-2):2, y=3*c(0,1,2,1,0), c(-3,3), c(-1,7))
+#'   edg <- cbind(1:4, 2:5)
+#'   edg <- rbind(edg, c(2,4))
+#'   letterA <- spatstat.linnet::linnet(v, edges=edg)
+#'   
+#'   # points on letter A
+#'   xx <- 
+#'     spatstat.geom::ppp(
+#'       x=c(-1.5,0,0.5,1.5), y=c(1.5,3,4.5,1.5), 
+#'       marks = data.frame(time = Sys.time() + 1:4, a = 1:4), 
+#'       window = spatstat.geom::owin(
+#'          xrange = range(c(-1.5,0,0.5,1.5)), 
+#'          yrange = range(c(1.5,3,4.5,1.5)))
+#'     )
+#'   x_lpp <- spatstat.linnet::lpp(xx, letterA)
+#'   
+#'   # convert to sftime
+#'   st_as_sftime(x_lpp, time_column_name = "time")
+#' }
+#' 
+#' @export
+st_as_sftime.lpp <- function(x, ..., time_column_name) {
+  st_sftime(sf::st_as_sf(x), time_column_name = time_column_name)
+}
+
+#' @name st_as_sftime
+#' @examples
+#' # convert an sftrack object to an sftime object (modified from sftrack)
+#' if (require(sftrack)) {
+#' 
+#'   # get an sftrack object
+#'   data("raccoon")
+#'   
+#'   raccoon$timestamp <- as.POSIXct(raccoon$timestamp, "EST")
+#'   
+#'   burstz <- 
+#'     list(id = raccoon$animal_id, month = as.POSIXlt(raccoon$timestamp)$mon)
+#'     
+#'   x_sftrack <- 
+#'     as_sftrack(raccoon,
+#'                group = burstz, time = "timestamp",
+#'                error = NA, coords = c("longitude", "latitude")
+#'   )
+#'   
+#'   # convert to sftime
+#'   st_as_sftime(x_sftrack)
+#' }
+#' 
+#' @export
+st_as_sftime.sftrack <- function(x, ...) {
+  time_column_name <- attr(x, which = "time_column")
+  attr(x, which = "group_col") <- NULL
+  attr(x, which = "error_col") <- NULL
+  class(x) <- setdiff(class(x), "sftrack")
+  st_sftime(x, time_column_name = time_column_name)
+}
+
+#' @name st_as_sftime
+#' @examples
+#' # convert an sftraj object to an sftime object (modified from sftrack)
+#' if (require(sftrack)) {
+#' 
+#'   # get an sftrack object
+#'   data("raccoon")
+#'   
+#'   raccoon$timestamp <- as.POSIXct(raccoon$timestamp, "EST")
+#'   
+#'   burstz <- 
+#'     list(id = raccoon$animal_id, month = as.POSIXlt(raccoon$timestamp)$mon)
+#'   
+#'   x_sftraj <- 
+#'     as_sftraj(raccoon,
+#'       time = "timestamp",
+#'       error = NA, coords = c("longitude", "latitude"),
+#'       group = burstz
+#'     )
+#'   
+#'   # convert to sftime
+#'   st_as_sftime(x_sftraj)
+#' }
+#' 
+#' @export
+st_as_sftime.sftraj <- function(x, ...) {
+  time_column_name <- attr(x, which = "time_column")
+  attr(x, which = "group_col") <- NULL
+  attr(x, which = "error_col") <- NULL
+  class(x) <- setdiff(class(x), "sftraj")
+  st_sftime(x, time_column_name = time_column_name)
+}
+
+#' @name st_as_sftime
+#' @inheritParams cubble::make_spatial_sf
+#' @examples 
+#' # convert a cubble_df object from package cubble to an sftime object
+#' if (requireNamespace("cubble", quietly = TRUE, versionCheck = "0.3.0")) {
+#' 
+#'   # get a cubble_df object
+#'   data("climate_aus", package = "cubble")
+#'   
+#'   # convert to sftime
+#'   climate_aus_sftime <- 
+#'     st_as_sftime(climate_aus[1:4, ])
+#'     
+#'   climate_aus_sftime <- 
+#'     st_as_sftime(cubble::face_temporal(climate_aus)[1:4, ])
+#'   
+#' }
+#' @export
+st_as_sftime.cubble_df <- function(x, ..., sfc = NULL, crs, silent = FALSE) {
+  
+  if (! requireNamespace("cubble", quietly = TRUE, versionCheck = "0.3.0"))
+    stop("You need the `cubble` package (>= 0.3.0) to use this function. Install that first.")
+  
+  # make sure the cubble_df object has the right format
+  if(! cubble::is_cubble_spatial(x)) {
+    x <- cubble::face_spatial(data = x)
+  }
+  if(! inherits(x, "sf")) {
+    x <- cubble::make_spatial_sf(x, sfc = sfc, crs = crs, silent = silent)
+  }
+  
+  # extract information needed to create the sftime object
+  time_column_name <- attr(x, which = "index")
+  id_column_name <- utils::head(names(attr(x, "key")), -1)
+  column_names <- c(setdiff(colnames(x), "ts"), colnames(x$ts[[1]]))
+  x_ts <- as.data.frame(cubble::face_temporal(x, col = "ts"))
+  
+  # convert to sf (drop all cubble_df attributes)
+  attr(x, which = "form") <- NULL
+  attr(x, which = "coords") <- NULL
+  attr(x, which = "index") <- NULL
+  class(x) <- setdiff(class(x), c("cubble_df", "spatial_cubble_df"))  
+  
+  # merge spatial and temporal faces
+  x <- merge(x_ts, x[, !colnames(x) == "ts"], by = id_column_name)
+  x <- x[, column_names]
+    
+  st_as_sftime(x, time_column_name = time_column_name)
+  
+}
+
+
 
 #### transform attributes ####
 
@@ -623,7 +817,7 @@ st_as_sftime.data.frame <-
 #' @param _data An object of class \code{\link[=st_sftime]{sftime}}.
 #' @inheritParams sf::transform.sf
 #' 
-#' @return \code{_data} (an \code{sftime object}) with modified attribute values 
+#' @return \code{_data} (an \code{sftime} object) with modified attribute values 
 #' (columns). 
 #' 
 #' @examples

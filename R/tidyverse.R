@@ -10,6 +10,7 @@
 #' @inheritParams sf::tidyverse
 #' @inheritParams tidyr::pivot_longer
 #' @param x An object of class \code{sftime}.
+#' @param y See \code{dplyr::`mutate-joins`}.
 #' @param .data An object of class \code{stime}.
 #' @return 
 #' \itemize{
@@ -287,6 +288,45 @@ unite.sftime <- function(data, col, ..., sep = "_", remove = TRUE) {
 #'   mutate(z = c("1", "2,3,4", "5,6")) %>%
 #'   separate_rows(z, convert = TRUE)
 #' 
- separate_rows.sftime <- function(data, ..., sep = "[^[:alnum:]]+", convert = FALSE) {
+separate_rows.sftime <- function(data, ..., sep = "[^[:alnum:]]+", convert = FALSE) {
   reclass_sftime(NextMethod(), time_column_name = attr(data, "time_column"))
 }
+
+# modified from https://github.com/r-spatial/sf/blob/9d3bcf864f77f651281e23cde6747d440fb54242/R/tidyverse.R:
+# This is currently only used in `bind_rows()` and `bind_cols()`
+# because sf overrides all default implementations
+dplyr_reconstruct.sftime <- function(data, template) {
+  
+  data <- NextMethod()
+  time_column_name <- attr(template, "time_column")
+  
+  # if the sf object could not be reconstructed or there is no time column, return `data` as is
+  if (! inherits(data, "sf") || ! time_column_name %in% names(data)) {
+    data
+  } else {
+    st_as_sftime(
+      data,
+      time_column_name = time_column_name
+    )
+  }
+
+}
+
+#' @rdname tidyverse
+#' @examples
+#' ## drop_na
+#' x1 %>%
+#'   mutate(z = c(1, 2, NA)) %>%
+#'   drop_na(z)
+#'   
+#' x1 %>%
+#'   mutate(z = c(1, NA, NA)) %>%
+#'   drop_na(z)   
+#' 
+#' x1 %>%
+#'   mutate(time = replace(time, 1, NA)) %>%
+#'   drop_na(time)
+drop_na.sftime <- function(data, ...) {
+ reclass_sftime(NextMethod(), time_column_name = attr(data, "time_column"))
+}
+

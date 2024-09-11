@@ -10,6 +10,12 @@
 \alias{st_as_sftime.sf}
 \alias{st_as_sftime.stars}
 \alias{st_as_sftime.data.frame}
+\alias{st_as_sftime.ppp}
+\alias{st_as_sftime.psp}
+\alias{st_as_sftime.lpp}
+\alias{st_as_sftime.sftrack}
+\alias{st_as_sftime.sftraj}
+\alias{st_as_sftime.cubble_df}
 \title{Convert a foreign object to an \code{sftime} object}
 \usage{
 st_as_sftime(x, ...)
@@ -41,6 +47,18 @@ st_as_sftime(x, ...)
   time_column_name = NULL,
   time_column_last = FALSE
 )
+
+\method{st_as_sftime}{ppp}(x, ..., time_column_name)
+
+\method{st_as_sftime}{psp}(x, ..., time_column_name)
+
+\method{st_as_sftime}{lpp}(x, ..., time_column_name)
+
+\method{st_as_sftime}{sftrack}(x, ...)
+
+\method{st_as_sftime}{sftraj}(x, ...)
+
+\method{st_as_sftime}{cubble_df}(x, ..., sfc = NULL, crs, silent = FALSE)
 }
 \arguments{
 \item{x}{An object to be converted into an object of class 
@@ -54,9 +72,9 @@ first one is taken.}
 
 \item{long}{A logical value; See \code{\link[stars:st_as_sf]{st_as_sf}}. 
 Typically, \code{long} should be set to \code{TRUE} since time information
-typically is a dimension of a stars object.}
+typically is a dimension of a \code{stars} object.}
 
-\item{agr}{A character vector; see details section of \code{\link{st_sf}}.}
+\item{agr}{A character vector; see the details section of \code{\link[sf]{st_sf}}.}
 
 \item{coords}{In case of point data: names or numbers of the numeric columns 
 holding coordinates.}
@@ -64,11 +82,11 @@ holding coordinates.}
 \item{wkt}{The name or number of the character column that holds WKT encoded 
 geometries.}
 
-\item{dim}{Passed on to \code{\link{st_point}} (only when argument 
+\item{dim}{Passed on to \code{\link[sf]{st_point}} (only when argument 
 \code{coords} is given).}
 
 \item{remove}{A logical value; when \code{coords} or \code{wkt} is given, 
-remove these columns from code{data.frame}?}
+remove these columns from \code{x}?}
 
 \item{na.fail}{A logical value; if \code{TRUE}, raise an error if coordinates 
 contain missing values.}
@@ -80,6 +98,13 @@ simple feature geometries; in case there is more than one and
 \item{time_column_last}{A logical value; if \code{TRUE}, the active time column is 
 always put last, otherwise column order is left unmodified. If both \code{sfc_last}
 and \code{time_column_last} are \code{TRUE}, the active time column is put last.}
+
+\item{sfc}{object of class \code{sfc} (see package sf)}
+
+\item{crs}{Coordinate reference system, something suitable as input to 
+\code{\link[sf]{st_crs}}.}
+
+\item{silent}{logical; suppress message?}
 }
 \value{
 \code{x} converted to an \code{sftime} object.
@@ -148,4 +173,104 @@ x5_df <-
    data.frame(a = 1:5, g, time = Sys.time() + 1:5, stringsAsFactors = FALSE)
 x5_sftime <- st_as_sftime(x5_df)
 
+# convert a ppp object to an sftime object (modified from the sf package)
+if (require(spatstat.geom)) {
+  st_as_sftime(gorillas, time_column_name = "date")
+}
+
+# convert a psp object to an sftime object (modified from the spatstat.geom 
+# package)
+if (require(spatstat.geom)) {
+  # modified from spatstat.geom:
+  x_psp <- 
+    psp(
+      runif(10), runif(10), runif(10), runif(10), window=owin(), 
+      marks = data.frame(time = Sys.time() + 1:10)
+    )
+  st_as_sftime(x_psp, time_column_name = "time")
+}
+
+# convert an lpp object to an sftime object (modified from the 
+# spatstat.linnet package)
+if (require(spatstat.geom) && require(spatstat.linnet)) {
+  # modified from spatstat.linnet:
+  
+  # letter 'A' 
+  v <- spatstat.geom::ppp(x=(-2):2, y=3*c(0,1,2,1,0), c(-3,3), c(-1,7))
+  edg <- cbind(1:4, 2:5)
+  edg <- rbind(edg, c(2,4))
+  letterA <- spatstat.linnet::linnet(v, edges=edg)
+  
+  # points on letter A
+  xx <- 
+    spatstat.geom::ppp(
+      x=c(-1.5,0,0.5,1.5), y=c(1.5,3,4.5,1.5), 
+      marks = data.frame(time = Sys.time() + 1:4, a = 1:4), 
+      window = spatstat.geom::owin(
+         xrange = range(c(-1.5,0,0.5,1.5)), 
+         yrange = range(c(1.5,3,4.5,1.5)))
+    )
+  x_lpp <- spatstat.linnet::lpp(xx, letterA)
+  
+  # convert to sftime
+  st_as_sftime(x_lpp, time_column_name = "time")
+}
+
+# convert an sftrack object to an sftime object (modified from sftrack)
+if (require(sftrack)) {
+
+  # get an sftrack object
+  data("raccoon")
+  
+  raccoon$timestamp <- as.POSIXct(raccoon$timestamp, "EST")
+  
+  burstz <- 
+    list(id = raccoon$animal_id, month = as.POSIXlt(raccoon$timestamp)$mon)
+    
+  x_sftrack <- 
+    as_sftrack(raccoon,
+               group = burstz, time = "timestamp",
+               error = NA, coords = c("longitude", "latitude")
+  )
+  
+  # convert to sftime
+  st_as_sftime(x_sftrack)
+}
+
+# convert an sftraj object to an sftime object (modified from sftrack)
+if (require(sftrack)) {
+
+  # get an sftrack object
+  data("raccoon")
+  
+  raccoon$timestamp <- as.POSIXct(raccoon$timestamp, "EST")
+  
+  burstz <- 
+    list(id = raccoon$animal_id, month = as.POSIXlt(raccoon$timestamp)$mon)
+  
+  x_sftraj <- 
+    as_sftraj(raccoon,
+      time = "timestamp",
+      error = NA, coords = c("longitude", "latitude"),
+      group = burstz
+    )
+  
+  # convert to sftime
+  st_as_sftime(x_sftraj)
+}
+
+# convert a cubble_df object from package cubble to an sftime object
+if (requireNamespace("cubble", quietly = TRUE, versionCheck = "0.3.0")) {
+
+  # get a cubble_df object
+  data("climate_aus", package = "cubble")
+  
+  # convert to sftime
+  climate_aus_sftime <- 
+    st_as_sftime(climate_aus[1:4, ])
+    
+  climate_aus_sftime <- 
+    st_as_sftime(cubble::face_temporal(climate_aus)[1:4, ])
+  
+}
 }
