@@ -12,7 +12,6 @@ library(stars)
 library(spacetime)
 library(ggplot2)
 library(tidyr)
-library(magrittr)
 
 ## ----sftime-class-1-----------------------------------------------------------
 # example sfc object
@@ -60,8 +59,8 @@ class(x_sftime1)
 
 # These can also be used with pipes
 x_sftime1 <-
-  x_sftime1 %>%
-  st_drop_time() %>%
+  x_sftime1 |>
+  st_drop_time() |>
   st_set_time(Sys.time(), time_column_name = "time")
 
 ## -----------------------------------------------------------------------------
@@ -90,9 +89,11 @@ x5_stars <- stars::read_ncdf(system.file("nc/bcsd_obs_1999.nc", package = "stars
 x5_sftime <- st_as_sftime(x5_stars, time_column_name = "time")
 
 ## ----error = TRUE-------------------------------------------------------------
+try({
 # failed conversion to sftime
 x5_sftime <- st_as_sftime(x5_stars, merge = TRUE, time_column_name = "time")
 x5_sftime <- st_as_sftime(x5_stars, long = FALSE, time_column_name = "time")
+})
 
 ## -----------------------------------------------------------------------------
 # get sample data
@@ -173,15 +174,15 @@ ggplot(x_sftime4) +
   geom_point(aes(y = id_object, x = time, color = b))
 
 ## ----plotting-ggplot-3, fig.width=7-------------------------------------------
-x_sftime4 %>%
-  tidyr::pivot_longer(cols = c("a", "b"), names_to = "variable", values_to = "value") %>%
+x_sftime4 |>
+  tidyr::pivot_longer(cols = c("a", "b"), names_to = "variable", values_to = "value") |>
   ggplot() + 
   geom_path(aes(y = value, x = time, color = variable)) +
   facet_wrap(~ id_object)
 
 ## ----plotting-ggplot-4, fig.width=7-------------------------------------------
-x_sftime4 %>%
-  tidyr::pivot_longer(cols = c("a", "b"), names_to = "variable", values_to = "value") %>%
+x_sftime4 |>
+  tidyr::pivot_longer(cols = c("a", "b"), names_to = "variable", values_to = "value") |>
   ggplot() + 
   geom_path(aes(y = value, x = time, color = id_object)) +
   facet_wrap(~ variable, scales = "free_y")
